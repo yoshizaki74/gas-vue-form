@@ -1,0 +1,809 @@
+<script>
+const { createApp, ref, onMounted, reactive, computed, watch, mounted } = Vue;
+
+const vuetify = Vuetify.createVuetify({
+  theme: {
+    themes: {
+      light: {
+        colors: {
+          primary: '#17873D',
+          secondary: '#345B63',
+          accent: '#FFC107',
+          error: '#FF5252',
+          info: '#bdf0bf',
+          success: '#4CAF50',
+          warning: '#FB8C00',
+        },
+      },
+    },
+  },
+});
+
+const LumberTable = {
+  props: ['items', 'headers', 'lumberTypes', 'lumberData'],
+  template: `
+  <v-row>
+    <v-col
+      :cols="12"
+      :xs="6"
+      :sm="6"
+      :md="6"
+      :lg="6"
+      :xl="12"
+      v-for="(item, index) in items"
+      :key="index"
+      class="my-2"
+    >
+      <v-card class="pa-2">
+        <v-row>
+          <v-col cols="12">
+            <h3>{{ index + 1 }}</h3>
+          </v-col>
+          <v-col 
+            v-for="header in headers" 
+            :key="header.value" 
+            :cols="header.col" 
+            :xs="header.col"
+            :sm="header.col"
+            :md="header.col"
+            :lg="header.col"
+            :xl="header.xlcol"
+          >
+            <div class="header-label mb-2">
+              {{ header.title }}
+            </div>
+            <v-select
+              v-if="header.value === 'lumberType'"
+              :items="lumberTypes"
+              v-model="item[header.value]"
+              :label="header.suffix"
+              variant="outlined"
+              dense
+            ></v-select>
+            <v-select
+              v-if="header.value === 'thickness'"
+              :items="getThicknessOptions(item.lumberType)"
+              v-model="item[header.value]"
+              :label="header.suffix"
+              variant="outlined"
+              dense
+              :disabled="!item.lumberType"
+              :rules="item.lumberType ? [v => !!v || '厚みは必須です'] : []"
+            ></v-select>
+            <v-text-field
+              v-if="header.value === 'width' && item.lumberType.includes('ポリランバー')"
+              v-model="item[header.value]"
+              :type="header.type || 'number'"
+              :suffix="header.suffix"
+              :label="header.suffix"
+              variant="outlined"
+              dense
+              :disabled="!item.lumberType || !item.thickness"
+              :rules="item.lumberType ? [v => !!v || '幅は必須です'] : []"
+            ></v-text-field>
+            <v-text-field
+              v-if="header.value === 'depth' && item.lumberType.includes('ポリランバー')"
+              v-model="item[header.value]"
+              :type="header.type || 'number'"
+              :suffix="header.suffix"
+              :label="header.suffix"
+              variant="outlined"
+              dense
+              :disabled="!item.lumberType || !item.thickness || !item.width"
+              :rules="item.lumberType ? [v => !!v || '奥行きは必須です'] : []"
+            ></v-text-field>
+            <v-select
+              v-if="header.value === 'width' && !item.lumberType.includes('ポリランバー')"
+              :items="getWidthOptions(item.lumberType, item.thickness)"
+              v-model="item[header.value]"
+              :label="header.suffix"
+              variant="outlined"
+              dense
+              :disabled="!item.lumberType || !item.thickness"
+              :rules="item.lumberType ? [v => !!v || '幅は必須です'] : []"
+            ></v-select>
+            <v-select
+              v-if="header.value === 'depth' && !item.lumberType.includes('ポリランバー')"
+              :items="getDepthOptions(item.lumberType, item.thickness, item.width)"
+              v-model="item[header.value]"
+              :label="header.suffix"
+              variant="outlined"
+              dense
+              :disabled="!item.lumberType || !item.thickness || !item.width"
+              :rules="item.lumberType ? [v => !!v || '奥行きは必須です'] : []"
+            ></v-select>
+            <v-text-field
+              v-else-if="header.value === 'edgeTapeW' || header.value === 'edgeTapeD' || header.value === 'quantity'"
+              v-model="item[header.value]"
+              :type="header.type || 'number'"
+              :suffix="header.suffix"
+              :label="header.suffix"
+              variant="outlined"
+              dense
+              :rules="item.lumberType ? [v => !!v || '数値を入力してください。'] : []"
+            ></v-text-field>
+            <v-text-field
+              v-else-if="header.value === 'note'"
+              v-model="item[header.value]"
+              :type="header.type || 'text'"
+              :suffix="header.suffix"
+              :label="header.suffix"
+              variant="outlined"
+              dense
+            ></v-text-field>
+          </v-col>
+        </v-row>
+      </v-card>
+    </v-col>
+  </v-row>
+  `,
+  methods: {
+    updateThicknessOptions(item) {
+      item.thickness = null;
+      item.width = null;
+      item.depth = null;
+    },
+    updateWidthOptions(item) {
+      item.width = null;
+      item.depth = null;
+    },
+    updateDepthOptions(item) {
+      item.depth = null;
+    },
+    getThicknessOptions(lumberType) {
+      return this.lumberData[lumberType] ? Object.keys(this.lumberData[lumberType]) : [];
+    },
+    getWidthOptions(lumberType, thickness) {
+      return this.lumberData[lumberType] && this.lumberData[lumberType][thickness] ? Object.keys(this.lumberData[lumberType][thickness]) : [];
+    },
+    getDepthOptions(lumberType, thickness, width) {
+      return this.lumberData[lumberType] && this.lumberData[lumberType][thickness] && this.lumberData[lumberType][thickness][width] ? this.lumberData[lumberType][thickness][width].map(d => d.width) : [];
+    }
+  },
+  watch: {
+    'items': {
+      handler(newItems) {
+        newItems.forEach(item => {
+          if (item.lumberType !== item.previousLumberType) {
+            this.updateThicknessOptions(item);
+            item.previousLumberType = item.lumberType;
+          }
+          if (item.thickness !== item.previousThickness) {
+            this.updateWidthOptions(item);
+            item.previousThickness = item.thickness;
+          }
+          if (item.width !== item.previousWidth) {
+            this.updateDepthOptions(item);
+            item.previousWidth = item.width;
+          }
+        });
+      },
+      deep: true
+    }
+  },
+  mounted() {
+    this.items.forEach(item => {
+      item.previousLumberType = item.lumberType;
+      item.previousThickness = item.thickness;
+      item.previousWidth = item.width;
+    });
+  }
+};
+
+const ShelfAssemblyKitTable = {
+  props: ['assemblyItems'],
+  template: `
+    <v-expansion-panels multiple>
+      <v-expansion-panel>
+        <v-expansion-panel-title>棚柱</v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <v-row>
+            <v-col :cols="12" :md="6" :lg="6">
+              <v-card class="mb-4">
+                <v-card-text>
+                  <div v-for="(item, index) in getList(assemblyItems.shelfColumns)" :key="index" class="product">
+                    <v-row>
+                      <v-col cols="12" class="product-title">{{ getType('shelfColumns', item) }}</v-col>
+                      <v-col cols="12" class="product-info">サイズ: L={{ item.size }}</v-col>
+                      <v-col cols="12" class="product-info">ビス止め数: {{ item.screwCount }}</v-col>
+                      <v-col cols="12" class="product-info">
+                        <v-text-field
+                          type="number"
+                          v-model="item.quantity"
+                          suffix="本"
+                          label="数量"
+                          variant="outlined"
+                        ></v-text-field>
+                      </v-col>
+                    </v-row>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+
+      <v-expansion-panel>
+        <v-expansion-panel-title>棚受</v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <v-row>
+            <v-col :cols="12" :md="6" :lg="6">
+              <v-card class="mb-4">
+                <v-card-text>
+                  <div v-for="(item, index) in getList(assemblyItems.shelfSupports)" :key="index" class="product">
+                    <v-row>
+                      <v-col cols="12" class="product-title">{{ getType('shelfSupports', item) }}</v-col>
+                      <v-col cols="12" class="product-info">ラバー: {{ item.rubber }}</v-col>
+                      <v-col cols="12" class="product-info">入数: {{ item.unit }}</v-col>
+                      <v-col cols="12" class="product-info">
+                        <v-text-field
+                          type="number"
+                          v-model="item.quantity"
+                          suffix="個"
+                          label="数量"
+                          variant="outlined"
+                        ></v-text-field>
+                      </v-col>
+                    </v-row>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+
+      <v-expansion-panel>
+        <v-expansion-panel-title>棚柱用ビス</v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <v-row>
+            <v-col :cols="12" :md="6" :lg="6">
+              <v-card class="mb-4">
+                <v-card-text>
+                  <div v-for="(item, index) in getList(assemblyItems.shelfScrews)" :key="index" class="product">
+                    <v-row>
+                      <v-col cols="12" class="product-title">{{ getType('shelfScrews', item) }}</v-col>
+                      <v-col cols="12" class="product-info">材質: {{ item.material }}</v-col>
+                      <v-col cols="12" class="product-info">長さ: {{ item.length }}</v-col>
+                      <v-col cols="12" class="product-info">
+                        <v-text-field
+                          type="number"
+                          v-model="item.quantity"
+                          suffix="袋"
+                          label="数量"
+                          variant="outlined"
+                        ></v-text-field>
+                      </v-col>
+                    </v-row>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+
+      <v-expansion-panel>
+        <v-expansion-panel-title>エンドキャップ</v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <v-row>
+            <v-col :cols="12" :md="6" :lg="6">
+              <v-card class="mb-4">
+                <v-card-text>
+                  <div v-for="(item, index) in getList(assemblyItems.endCaps)" :key="index" class="product">
+                    <v-row>
+                      <v-col cols="12" class="product-title">{{ getType('endCaps', item) }}</v-col>
+                      <v-col cols="12" class="product-info">
+                        <v-text-field
+                          type="number"
+                          v-model="item.quantity"
+                          suffix="個"
+                          label="数量"
+                          variant="outlined"
+                        ></v-text-field>
+                      </v-col>
+                    </v-row>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
+  `,
+  methods: {
+    getType(category, item) {
+      switch (category) {
+        case 'shelfColumns':
+          return `棚柱（${item.color}）`;
+        case 'shelfSupports':
+          return `棚受（${item.color}）`;
+        case 'shelfScrews':
+          return `棚柱用ビス（${item.color}）`;
+        case 'endCaps':
+          return `エンドキャップ（${item.color}）`;
+        default:
+          return '';
+      }
+    },
+    getList(items) {
+      if (!items) return []; // items が undefined または null の場合は空配列を返す
+      let list = [];
+      for (const [key, value] of Object.entries(items)) {
+        if (Array.isArray(value)) {
+          value.forEach((item) => {
+            item.color = key.split('（')[1].split('）')[0];
+            list.push(item);
+          });
+        }
+      }
+      return list;
+    }
+  }
+};
+
+
+const ShelfboardOrderForm = {
+  props: ['lumberTypes', 'lumberData', 'assemblyItems'],
+  components: {
+    LumberTable,
+    ShelfAssemblyKitTable
+  },
+  template: `
+    <div>
+      <v-overlay
+        :model-value="loadingState"
+        :persistent="true"
+        class="top-overlay"
+      >
+        <v-progress-circular
+          color="primary"
+          indeterminate
+          :size="78"
+        />
+        <div class="text-center mt-3">読み込み中...</div>
+      </v-overlay>
+      <div class="form-wrapper">
+        <h1>棚板注文フォーム</h1>
+        <v-form ref="orderForm" v-model="valid" class="form">
+          <v-sheet class="pa-2 mb-4">
+            <v-row>
+              <v-col cols="12" sm="6" md="4">
+                <div class="form-item">
+                  <label for="customerName">お得意先様名(現場名)</label>
+                  <v-text-field
+                    id="customerName"
+                    variant="outlined"
+                    v-model="customerName"
+                    :rules="[v => !!v || 'お得意先様名(現場名)は必須です']"
+                    required
+                  ></v-text-field>
+                </div>
+              </v-col>
+              <v-col cols="6" sm="3" md="4">
+                <div class="form-item">
+                  <label for="requestDate">ご依頼日</label>
+                  <v-text-field
+                    id="requestDate"
+                    variant="outlined"
+                    type="date"
+                    v-model="requestDate"
+                    readonly
+                  ></v-text-field>
+                </div>
+              </v-col>
+              <v-col cols="6" sm="3" md="4">
+                <div class="form-item">
+                  <label for="deliveryDate">納品希望日</label>
+                  <v-text-field
+                    id="deliveryDate"
+                    type="date"
+                    variant="outlined"
+                    v-model="deliveryDate"
+                    :rules="[v => !!v || '納品希望日は必須です']"
+                    required
+                  ></v-text-field>
+                </div>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col cols="12" sm="6">
+                <div class="form-item">
+                  <label for="contactName">ご担当者様名</label>
+                  <v-text-field
+                    id="contactName"
+                    variant="outlined"
+                    v-model="contactName"
+                    :rules="[v => !!v || 'ご担当者様名は必須です']"
+                    required
+                  ></v-text-field>
+                </div>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <div class="form-item">
+                  <label for="contactPhone">ご連絡先(TEL番号)※ハイフンなし</label>
+                  <v-text-field
+                    id="contactPhone"
+                    type="tel"
+                    variant="outlined"
+                    v-model="contactPhone"
+                      :rules="[
+                        v => !!v || '電話番号は必須です',
+                        v => /^[0-9]{10,11}$/.test(v) || '有効な電話番号を入力してください（10〜11桁の数字）'
+                      ]"
+                    required
+                  ></v-text-field>
+                </div>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <div class="form-item">
+                  <label for="contactMail">ご連絡先(メールアドレス)</label>
+                  <v-text-field
+                    id="contactMail"
+                    variant="outlined"
+                    v-model="contactMail"
+                    :rules="[v => !!v || 'メールアドレスは必須です。',
+                             v => /.+@.+\..+/.test(v) || '正しい形式でメールアドレスを入力してください。'
+                            ]"
+                    required
+                  ></v-text-field>
+                </div>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col cols="12">
+                <label for="deliveryDestination">納品先</label>
+                <v-select
+                  :items="deliveryDestination"
+                  :label="納品先"
+                  variant="outlined"
+                  dense
+                  :rules="[v => !!v || '納品先を選択してください。']"
+                  required
+                ></v-select>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col cols="12">
+                <div class="form-item">
+                  <label for="deliveryAddress">現場(納品先)住所</label>
+                  <v-textarea
+                    id="deliveryAddress"
+                    variant="outlined"
+                    v-model="deliveryAddress"
+                    :rules="[v => !!v || '現場(納品先)住所は必須です']"
+                    required
+                  ></v-textarea>
+                </div>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col cols="12" sm="6">
+                <div class="form-item">
+                  <label for="curingTape">EV</label>
+                  <v-btn-toggle v-model="curingTape" color="primary" variant="outlined" class="ml-5">
+                    <v-btn value="yes">有</v-btn>
+                    <v-btn value="no">無</v-btn>
+                  </v-btn-toggle>
+                  <span v-if="validationMessage" class="error-message">{{ validationMessage }}</span>
+                </div>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col cols="12" sm="4">
+                <div class="form-item">
+                  <label for="keyNumber">鍵No.(設置場所)</label>
+                  <v-text-field
+                    id="keyNumber"
+                    variant="outlined"
+                    v-model="keyNumber"
+                  ></v-text-field>
+                </div>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col cols="12" sm="4">
+                <div class="form-item">
+                  <label for="consigneeName">荷受人名</label>
+                  <v-text-field
+                    id="consigneeName"
+                    variant="outlined"
+                    v-model="consigneeName"
+                    required
+                  ></v-text-field>
+                </div>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <div class="form-item">
+                  <label for="consigneeTel">荷受人 TEL番号※ハイフンなし</label>
+                  <v-text-field
+                    id="consigneeTel"
+                    type="tel"
+                    variant="outlined"
+                    v-model="consigneeTel"
+                      :rules="[
+                        v => !!v || '電話番号は必須です',
+                        v => /^[0-9]{10,11}$/.test(v) || '有効な電話番号を入力してください（10〜11桁の数字）'
+                      ]"
+                    required
+                  ></v-text-field>
+                </div>
+              </v-col>
+              <v-col cols="12">
+                <div class="form-item">
+                  <label for="consigneeNote">現場特記事項</label>
+                  <v-text-field
+                    id="consigneeNote"
+                    variant="outlined"
+                    v-model="consigneeNote"
+                    label="搬送・搬入時の注意事項はこちらへ記入してください"
+                  ></v-text-field>
+                </div>
+              </v-col>
+            </v-row>
+          </v-sheet>
+          <v-card class="bg-black pa-4 mb-4" color="info">
+            <v-row>
+              <v-col cols="12">
+                <div class="text-h5 mb-2">★納期</div>
+                <div class="text-body-1">白ポリ・シナ・ラワン  【実働】 中2〜3日程度</div>
+                <div class="text-body-1">黒ポリ・木目  【実働】 中4〜5日程度（在庫有の場合）</div>
+              </v-col>
+            </v-row>
+          </v-card>
+          <div class="form-item">
+            <div class="text-h5 font-weight-bold">
+              ランバー
+            </div>
+            <LumberTable :items="items" :headers="headers" :lumber-types="lumberTypes" :lumber-data="lumberData"></LumberTable>
+          </div>
+          <v-btn color="primary" variant="outlined" icon="mdi-plus" @click="addRow" :disabled="isAddButtonDisabled" :class="{ 'btn-disabled': isAddButtonDisabled }"></v-btn>
+          <div class="text-caption mt-2">
+            追加で注文する場合は＋ボタンを押してください。
+          </div>
+          <div v-if="isAddButtonDisabled" class="text-caption">追加できるのは8行までです。</div>
+          <v-card class="pa-2 mt-2">
+            <v-row>
+              <v-col cols="12" sm="6">
+                <label for="elevator">養生テープはがし</label>
+                <v-btn-toggle v-model="elevator" color="primary" variant="outlined" class="ml-5">
+                  <v-btn value="yes">有</v-btn>
+                  <v-btn value="no">無</v-btn>
+                </v-btn-toggle>
+              </v-col>
+            </v-row>
+          </v-card>
+          <div class="form-item pt-5">
+            <div class="text-h5 font-weight-bold pb-4">
+              棚受金物
+            </div>
+            <ShelfAssemblyKitTable :assembly-items="assemblyItems" />
+          </div>
+          <v-layout>
+            <v-btn color="primary" class="mx-auto mt-4" min-width="300px" min-height="60px" @click="showDialog">
+              <div class="text-h6">送信</div>
+            </v-btn>
+          </v-layout>
+        </v-form>
+        <v-snackbar v-model="snackbar" :timeout="6000" top>
+          {{ snackbarMessage }}
+          <v-btn color="red" text @click="snackbar = false">閉じる</v-btn>
+        </v-snackbar>
+        <v-dialog v-model="dialog" persistent max-width="500">
+          <v-card>
+            <v-card-title class="text-h6">確認</v-card-title>
+            <v-card-text>注文を確定しますか？</v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn color="red darken-1" text @click="dialog = false">戻る</v-btn>
+              <v-btn color="green darken-1" text @click="submitForm">確定</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+        <v-overlay
+          :model-value="isLoading"
+          :persistent="true"
+          class="align-center justify-center"
+        >
+          <v-progress-circular
+            color="primary"
+            indeterminate
+            :size="78"
+          />
+          <div class="text-center mt-3">注文中...</div>
+        </v-overlay>
+        <v-dialog v-model="responseDialog" max-width="500">
+          <v-card>
+            <v-card-title class="text-h6">{{ responseTitle }}</v-card-title>
+            <v-card-text v-html="responseMessage"></v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn :color="responseColor" text @click="closeDialog">閉じる</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+      </div>
+    </div>
+  `,
+   setup() {
+    const customerName = ref('');
+    const requestDate = ref('');
+    const deliveryDate = ref('');
+    const contactName = ref('');
+    const contactPhone = ref('');
+    const contactMail = ref('');
+    const deliveryAddress = ref('');
+    const elevator = ref('');
+    const curingTape = ref('');
+    const keyNumber = ref('');
+    const valid = ref(false);
+    const orderForm = ref(null);
+    const dialog = ref(false);
+    const deliveryDestination = ref(['現場届', '会社届', '引き取り', 'その他']);
+
+    const consigneeName = ref('');
+    const consigneeTel = ref('');
+    const consigneeNote = ref('');
+    
+    const responseDialog = ref(false);
+    const responseTitle = ref('');
+    const responseMessage = ref('');
+    const responseColor = ref('');
+
+    const isLoading = ref(false);
+    const loadingState = ref(true);
+
+    const lumberTypes = ref([]);
+    const lumberData = ref({});
+
+    const assemblyItems = ref({});
+
+    const snackbar = ref(false);
+    const snackbarMessage = ref('');
+
+    const headers = [
+      { title: 'ランバー種類', value: 'lumberType', type: 'text', col: '12', xlcol: '2' },
+      { title: '厚み', value: 'thickness', type: 'number', col: '12', xlcol: '1', suffix: 'mm' },
+      { title: 'W寸法(間口)', value: 'width', type: 'number', col: '6', xlcol: '1', suffix: 'mm' },
+      { title: 'D寸法(奥行)', value: 'depth', type: 'number', col: '6', xlcol: '1', suffix: 'mm' },
+      { title: '木口テープ位置(W)', value: 'edgeTapeW', type: 'number', col: '6', xlcol: '1', suffix: '辺' },
+      { title: '木口テープ位置(D)', value: 'edgeTapeD', type: 'number', col: '6', xlcol: '1', suffix: '辺' },
+      { title: '枚数', value: 'quantity', type: 'number', col: '12', xlcol: '1', suffix: '枚' },
+      { title: '備考', value: 'note', type: 'text', col: '12', xlcol: '4'}
+    ];
+
+    const items = ref([
+      { lumberType: '', thickness: '', width: '', depth: '', edgeTapeW: '', edgeTapeD: '', quantity: '', note: '' },
+    ]);
+
+    const addRow = () => {
+      if (items.value.length < 8) {
+        items.value.push({ lumberType: '', thickness: '', width: '', depth: '', edgeTapeW: '', edgeTapeD: '', quantity: '', note: '' });
+      }
+    };
+    const isAddButtonDisabled = computed(() => items.value.length >= 8);
+
+    const showDialog = async () => {
+      const validResult = await orderForm.value.validate();
+      if (validResult.valid) {
+        dialog.value = true;
+      } else {
+        console.log("バリデーションに失敗しました。");
+        snackbarMessage.value = "入力項目に不足があります。入力内容を確認してください。";
+        snackbar.value = true;
+      }
+    };
+
+    const getListWithQuantities = (items) => {
+      if (!items) return []; // items が undefined または null の場合は空配列を返す
+      let list = [];
+      for (const [key, value] of Object.entries(items)) {
+        if (Array.isArray(value)) {
+          value.forEach((item) => {
+            item.color = key.split('（')[1].split('）')[0];
+            list.push(item);
+          });
+        }
+      }
+      return list;
+    };
+
+    const submitForm = () => {
+      dialog.value = false;
+      isLoading.value = true;
+      console.log("送信開始");
+
+      const formattedAssemblyItems = {
+        shelfColumns: getListWithQuantities(assemblyItems.value.shelfColumns),
+        shelfSupports: getListWithQuantities(assemblyItems.value.shelfSupports),
+        shelfScrews: getListWithQuantities(assemblyItems.value.shelfScrews),
+        endCaps: getListWithQuantities(assemblyItems.value.endCaps)
+      };
+
+      const payload = {
+        customerName: customerName.value,
+        requestDate: requestDate.value,
+        deliveryDate: deliveryDate.value,
+        contactName: contactName.value,
+        contactPhone: contactPhone.value,
+        contactMail: contactMail.value,
+        deliveryAddress: deliveryAddress.value,
+        elevator: elevator.value,
+        curingTape: curingTape.value,
+        keyNumber: keyNumber.value,
+        items: items.value,
+        assemblyItems: formattedAssemblyItems,
+      };
+
+      console.log(payload);
+
+      google.script.run.withSuccessHandler(handleResponse).withFailureHandler(handleError).submitFormToGoogleForm(payload);
+    };
+
+    const handleResponse = (result) => {
+      console.log("handleResponse呼び出し");
+      isLoading.value = false;
+      console.log(result);
+      if (result && result.status === 'success') {
+        const orderNumber = result.orderNumber;
+        responseMessage.value = `注文完了しました。<br><br>注文番号  <strong>${orderNumber}</strong>`;
+        responseTitle.value = '発注完了';
+        responseColor.value = 'green darken-1';
+      } else {
+        responseMessage.value = "注文失敗しました。<br>お手数ですが、再度注文をしてください。";
+        responseTitle.value = 'エラー';
+        responseColor.value = 'red darken-1';
+      }
+      responseDialog.value = true;
+    };
+
+    // 閉じるボタンのクリックイベントを処理
+    const closeDialog = () => {
+      responseDialog.value = false;
+      if (responseTitle.value === '発注完了') {
+        // 一定時間後にリダイレクトする
+        setTimeout(() => {
+          window.location.href = 'https://script.google.com/macros/s/AKfycbxUHT6w84TPohcqMr6V-f7g7WlW45LlGxW0zVtTSVIUlnTykCHlUKGKPQh-J_omddg8Iw/exec?page=shelfboard-index';
+        }, 500); // 0.5秒後にリダイレクト
+      }
+    };
+
+    const handleError = (error) => {
+      isLoading.value = false;
+      responseMessage.value = `送信に失敗しました。エラー: ${error.message}`;
+      responseDialog.value = true;
+    };
+
+    onMounted(() => {
+      google.script.run.withSuccessHandler((result) => {
+        lumberTypes.value = result.uniqueLumberTypes;
+        lumberData.value = result.lumberData;
+        assemblyItems.value = result.shelfHardwareData;
+        loadingState.value = false;
+      }).withFailureHandler((error) => {
+        console.error("データ取得失敗", error);
+        loadingState.value = false;
+      }).getAllLumberData();
+
+      const today = new Date().toISOString().split('T')[0];
+      requestDate.value = today;
+    });
+
+    return {
+      customerName, requestDate, deliveryDate, contactName, contactPhone, contactMail, deliveryDestination,
+      deliveryAddress, elevator, curingTape, keyNumber, items, isAddButtonDisabled,
+      loadingState, submitForm, addRow, headers, closeDialog, handleResponse, handleError,
+      assemblyItems,
+      valid, orderForm, lumberTypes, lumberData,
+      dialog, showDialog, responseDialog, responseTitle, responseMessage, responseColor,
+      isLoading,
+      snackbar, snackbarMessage
+    };
+  }
+};
+
+const app = createApp({ components: { ShelfboardOrderForm } });
+app.use(vuetify).mount('#app');
+</script>

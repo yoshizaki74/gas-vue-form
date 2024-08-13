@@ -1,0 +1,300 @@
+<style type="text/css">
+  /* Fonts */
+  @import url(https://fonts.googleapis.com/css?family=Open+Sans:400);
+  //英数字のフォント
+  //日本語のフォントはsans-serifで統一
+
+  /* 全体の横スクロールを防止 */
+  html{
+    overflow-x: hidden;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Simple Reset */
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    overflow-x: hidden;
+    background: #e9e9e9;
+    color: #5e5e5e;
+    font: 400 87.5%/1.5em sans-serif;
+    width: 100%;
+  }
+
+  [v-cloak] {
+    display: none;
+  }
+
+  label,
+  input,
+  text,
+  select,
+  button {
+    cursor: pointer;
+  }
+
+  /* ローディングインジケータ */
+  .loading {
+    text-align: center;
+  }
+
+  .container {
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    min-height: 200px;
+    background-color: #e9e9e9;
+  }
+  
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes colorChange {
+    0% {
+      border-color: #4169e1 #00000010 #00000010;
+    }
+
+    33.3% {
+      border-color: #2e8b57 #00000010 #00000010;
+    }
+
+    66.6% {
+      border-color: #f0e68c #00000010 #00000010;
+    }
+
+    100% {
+      border-color: #2e8b57 #00000010 #00000010;
+    }
+  }
+
+  /* v-cloakを用いてVueの準備が整うまで非表示にする */
+  [v-cloak] {
+    display: none;
+  }
+
+  /* Form Layout */
+  .form-wrapper {
+    background: #fafafa;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  h1 {
+    text-align: center;
+    padding: 1em 0;
+  }
+
+  .form {
+    padding: 0;
+  }
+
+  .form-item {
+    margin-bottom: 0.75em;
+  }
+
+  .form-item input {
+    border: none;
+    border-bottom: 2px solid #e9e9e9;
+    color: #666;
+    font-family: sans-serif;
+    font-size: 1em;
+    height: 50px;
+    transition: border-color 0.3s;
+    width: 100%;
+  }
+
+  .form-item input:focus {
+    border-bottom: 2px solid #c0c0c0;
+    outline: none;
+  }
+
+  .radio-title {
+    display: block;
+    padding-bottom: 1em;
+  }
+
+  label.radio {
+    display: block;
+    padding: 2px 0;
+  }
+
+  label.radio>input {
+    height: 1em;
+    width: 1em;
+    vertical-align: middle;
+  }
+
+  .button-panel {
+    margin: 2em 0 0;
+    width: 100%;
+  }
+
+  .button-panel .button {
+    display: block;
+    cursor: pointer;
+    height: 50px;
+    font-family: 'Open sans', sans-serif;
+    font-size: 1.2em;
+    letter-spacing: 0.05em;
+    text-align: center;
+    text-transform: uppercase;
+    transition: background 0.3s ease-in-out;
+  }
+
+  .button-panel .button-primary {
+    background: #00bcd4;
+    border: none;
+    color: #fff;
+    width: 80%;
+    margin: auto;
+  }
+
+  .button-panel .button-secondary {
+    background: #ffffff;
+    border: 2px solid #0097a7;
+    color: #000;
+    width: 65%;
+    margin: auto;
+  }
+
+  .button-panel .button-tertiary {
+    background: #d3d3d3;
+    color: #000;
+    border: 2px solid #8e8e8e;
+    font-weight: bold;
+    width: 50%;
+    margin: 2em auto auto;
+  }
+
+  .button-primary:hover {
+    background: #0097a7;
+  }
+
+  .button-secondary:hover {
+    color: #fff;
+    background: #0097a7;
+  }
+
+  .button-tertiary:hover {
+    background: #8e8e8e;
+    color: #fff;
+    font-weight: 400;
+  }
+
+  .error {
+    color: #F00;
+    font-size: 10px;
+    text-align: right;
+  }
+
+  .v-application {
+    min-height: 0 !important;
+  }
+
+  .v-application__wrap {
+    min-height: 0 !important;
+  }
+
+  /* Vuetifyのデータテーブルフッターを非表示にする */
+  .v-data-table-footer {
+    display: none !important;
+  }
+
+  .header-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .header-label.no-wrap {
+    white-space: nowrap;
+  }
+
+  .top-overlay {
+    top: 0;
+    left: 0;
+    right: 0;
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    height: 100vh; /* 必要に応じて調整 */
+    background-color: rgba(255, 255, 255, 0.7); /* 背景色と透明度の調整 */
+  }
+
+  .top-overlay {
+    margin-top: 10px; /* インジケーターの位置調整 */
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .product-title {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: normal;
+    margin-bottom: 16px;
+    color: #333; /* メインカラー */
+  }
+
+  .product-info {
+    font-size: 14px;
+    color: #777; /* サブカラー */
+    margin-bottom: 8px;
+  }
+
+  @media (max-width: 450px) {
+    .header-label {
+      font-size: 12px; /* 必要に応じて調整 */
+    }
+  }
+
+  @media (max-width: 375px) {
+  .v-card-text > .v-row {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+  }
+
+  .v-card-text > .v-row > .v-col {
+    width: 100%;
+    margin-bottom: 0.5em;
+  }
+
+  .v-card-title {
+    font-size: 1.2em;
+  }
+
+  .v-card-text strong {
+    font-size: 0.9em;
+  }
+
+  .v-text-field {
+    width: 100%;
+  }
+
+  .product-title {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+
+  .product-info {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+}
+
+</style>
